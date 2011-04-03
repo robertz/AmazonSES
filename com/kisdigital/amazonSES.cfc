@@ -42,7 +42,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Return a struct with the api status instead of void
  */
  public struct function setEndPoint(required String endPoint) hint = "Overrides the default endpoint" {
-  var result = {'apiStatus':'0','apiMessage':'Success'};
+  var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   try{
    instance.emailService.setEndPoint(arguments.endPoint);
   }
@@ -57,7 +57,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Return a struct with the api status instead of void
  */
  public struct function getSendQuota() hint = "Returns your quota from from the SES service" {
-  var result = {'apiStatus':'0','apiMessage':'Success'};
+  var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   result['max24HourSend'] = "";
   result['getMaxSendRate'] = "";
   result['getSentLast24Hours'] = "";
@@ -78,7 +78,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Return a struct with the api status 
  */
  public struct function getSendStatistics() hint = "Returns the user's sending statistics. The result is a list of data points, representing the last two weeks of sending activity." {
-  var result = {'apiStatus':'0','apiMessage':'Success'};
+  var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   var dataPoints = instance.emailService.GetSendStatistics().getSendDataPoints();
   var i = 0;
   var tempStruct = "";
@@ -105,7 +105,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Chained email address to the request constructor, updated return with apiStatus
  */
  public struct function deleteVerifiedEmailAddress(required String email) hint = "Deletes the specified email address from the list of verified addresses." {
-  var result = {'apiStatus':'0','apiMessage':'Success'};
+  var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   var awsRequest = createObject("java", "com.amazonaws.services.simpleemail.model.DeleteVerifiedEmailAddressRequest").withEmailAddress(arguments.email);
   try{
    instance.emailService.deleteVerifiedEmailAddress(awsRequest);    
@@ -137,7 +137,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Return a struct with the api status
  */
  public struct function verifyEmailAddress(required String email) hint = "Verifies an email address." {
-  var result = {'apiStatus':'0','apiMessage':'Success'};
+  var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   var verifyRequest = createObject("java", "com.amazonaws.services.simpleemail.model.VerifyEmailAddressRequest").withEmailAddress(arguments.email);
   try{
    instance.emailService.verifyEmailAddress(verifyRequest);
@@ -150,9 +150,10 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  /*
  *  Author: Robert Zehnder, Date: 03/31/2011, Purpose: Composes an email message based on input data, and then immediately queues the message for sending.
  *  Modified: Robert Zehnder, Date: 04/01/2011, Purpose: Corrected name to match javadoc. Allow sending recipients, cc, and bcc fields as a csv list
+ *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Adding replyTo support
  */
- public void function sendEMail(required String from, required String recipient, required String subject, required String messageBody, String cc = "", String bcc = "") hint = "Composes an email message based on input data, and then immediately queues the message for sending." {
-  var result = {'apiStatus':'0','apiMessage':'Success'};
+ public struct function sendEMail(required String from, required String recipient, required String subject, required String messageBody, String cc = "", String bcc = "", String replyTo = "") hint = "Composes an email message based on input data, and then immediately queues the message for sending." {
+  var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   var mailSession = createObject("java", "javax.mail.Session").getInstance(instance.props);
   var mailTransport = createObject("java", "com.amazonaws.services.simpleemail.AWSJavaMailTransport").init(mailSession, JavaCast("null", 0));
   var messageObj = createObject("java", "javax.mail.internet.MimeMessage").init(mailSession);
@@ -198,5 +199,6 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   catch (Any e){
     result = {'apiStatus':'-1','apiMessage':'Method sendEMail: '& e.message};
   }
+  return result;
  }
 }
