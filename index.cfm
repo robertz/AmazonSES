@@ -1,6 +1,6 @@
 <cfscript>
  application.amazonCreds = "/path/to/AwsCredentials.properties";
- sesGateway = new com.kisdigital.amazonSES().init(application.amazonCreds);
+ sesGateway = new com.kisdigital.amazonSES(application.amazonCreds);
  sesGateway.setEndPoint("https://email.us-east-1.amazonaws.com");
  
  writeDump(var = sesGateway, label="sesGateway object");
