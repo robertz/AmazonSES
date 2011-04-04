@@ -5,20 +5,22 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  * 
  *  AmazonSES Reference: http://docs.amazonwebservices.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/simpleemail/AmazonSimpleEmailService.html
  *  
- *  Version 0.1.0:
- *     Initial release
- *     Added function listVerifiedEmailAddresses
- *     Added function verifyEmailAddress
- *     Added function sendEmail
+ *  Version 0.1.3
+ *     Set Reply-To in the message header if specified
+ *  Version 0.1.2
+ *     Modified functions to return structs to make it easier to include status and error messages in responses
+ *     Added function getSendStatistics
  *  Version 0.1.1
  *     Require the full path to the AwsCredentials.properties file on init
  *     Updated function comments to reflect javadoc descriptions <http://docs.amazonwebservices.com/AWSJavaSDK/latest/javadoc/index.html>
  *     Added function setEndPoint to override the default endpoint
  *     Added function getSendQuota to view your daily statistics
  *     Added function deleteVerifiedEmailAddress to delete the specified email address from the list of verified addresses
- *  Version 0.1.2
- *     Modified functions to return structs to make it easier to include status and error messages in responses
- *     Added function getSendStatistics
+ *  Version 0.1.0:
+ *     Initial release
+ *     Added function listVerifiedEmailAddresses
+ *     Added function verifyEmailAddress
+ *     Added function sendEmail
  */
  var instance = {};
 
@@ -121,7 +123,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Return a struct with the api status
  */
  public struct function listVerifiedEmailAddresses() hint = "Returns a list containing all of the email addresses that have been verified." {
-  var result = {'apiStatus':'0','apiMessage':''};
+  var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   try{
    result['verifiedList'] = instance.emailService.ListVerifiedEmailAddresses().getVerifiedEmailAddresses();
   }
@@ -150,7 +152,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  /*
  *  Author: Robert Zehnder, Date: 03/31/2011, Purpose: Composes an email message based on input data, and then immediately queues the message for sending.
  *  Modified: Robert Zehnder, Date: 04/01/2011, Purpose: Corrected name to match javadoc. Allow sending recipients, cc, and bcc fields as a csv list
- *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Adding replyTo support
+ *  Modified: Robert Zehnder, Date: 04/03/2011, Purpose: Set Reply-To header, if specified
  */
  public struct function sendEMail(required String from, required String recipient, required String subject, required String messageBody, String cc = "", String bcc = "", String replyTo = "") hint = "Composes an email message based on input data, and then immediately queues the message for sending." {
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
@@ -162,6 +164,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   var messageTo = listToArray(arguments.recipient);
   var messageCC = listToArray(arguments.cc);
   var messageBCC = listToArray(arguments.bcc);
+  var messageReplyTo = createObject("java", "javax.mail.internet.InternetAddress").init(arguments.replyTo);
   var messageSubject = arguments.subject;
   var messageBody = arguments.messageBody;
   var verified = arrayToList(listVerifiedEmailAddresses().verifiedList).contains(arguments.from);
@@ -172,6 +175,9 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
     verifyEmailAddress(arguments.from);
     throw("Email address has not been validated.  Please check the email on account " & arguments.from & " to complete validation.");
    }
+   if(len(arguments.replyTo)){
+    messageObj.addHeader("Reply-To", messageReplyTo.toString());
+   }   
    mailTransport.connect();
 
    messageObj.setFrom(messageFrom);
@@ -191,7 +197,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
    messageObj.setSubject(messageSubject);
    messageObj.setContent(messageBody, "text/html");
    messageObj.saveChanges();
-
+   
    mailTransport.sendMessage(messageObj, JavaCast("null", 0));
 
    mailTransport.close();
