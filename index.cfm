@@ -57,7 +57,7 @@
 
 <body>
  <cfscript>
-  sesGateway = new com.kisdigital.amazonSES(application.amazonCreds);
+  sesGateway = new com.kisdigital.amazonSES(expandPath('/') & "AwsCredentials.properties");
   if(structKeyExists(form, 'cmd')){
    if(!structKeyExists(form, "from")) form['from'] = "";
    if(form.cmd eq 1){
