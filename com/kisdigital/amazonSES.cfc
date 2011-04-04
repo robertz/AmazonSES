@@ -147,6 +147,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   catch (any e){
    result = {'apiStatus':'-1','apiMessage':'Method verifyEmailAddress: '& e.message};
   }
+  return result;
  }
 
  /*
@@ -164,7 +165,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   var messageTo = listToArray(arguments.recipient);
   var messageCC = listToArray(arguments.cc);
   var messageBCC = listToArray(arguments.bcc);
-  var messageReplyTo = createObject("java", "javax.mail.internet.InternetAddress").init(arguments.replyTo);
+  var messageReplyTo = arguments.replyTo;
   var messageSubject = arguments.subject;
   var messageBody = arguments.messageBody;
   var verified = arrayToList(listVerifiedEmailAddresses().verifiedList).contains(arguments.from);
@@ -175,8 +176,8 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
     verifyEmailAddress(arguments.from);
     throw("Email address has not been validated.  Please check the email on account " & arguments.from & " to complete validation.");
    }
-   if(len(arguments.replyTo)){
-    messageObj.addHeader("Reply-To", messageReplyTo.toString());
+   if(len(trim(arguments.replyTo))){
+    messageObj.addHeader("Reply-To", createObject("java", "javax.mail.internet.InternetAddress").init(messageReplyTo).toString());
    }   
    mailTransport.connect();
 
