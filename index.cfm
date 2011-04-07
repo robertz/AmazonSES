@@ -90,7 +90,6 @@
   //writeDump(var = sesGateway.listVerifiedEmailAddresses(), label="Verified Senders");
   //writeDump(var = sesGateway.getSendQuota(), label = "Send Quota");
   //writeDump(var = sesGateway.getSendStatistics(), label = "Send Statistics");  
-  //sesGateway.deleteVerifiedEmailAddress("robert.zehnder@usarmyphysicaltherapyalumni.com");
   verifiedSenders = sesGateway.listVerifiedEmailAddresses();
   vList = verifiedSenders.verifiedList;
   sendQuota = sesGateway.getSendQuota();

@@ -24,10 +24,6 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  */
  var instance = {};
 
- /*
- * Author: Robert Zehnder, Date: 03/31/2011, Purpose: Initialize our object
- * Modified: Robert Zehnder, Data: 04/01/2011, Purpose: Require passing credentials path when component is initialized
- */
  public any function init(required String pathToCredentials) hint = "I initialize the gateway" {
   instance['awsCredentials'] = createObject("java", "java.io.File").init(arguments.pathToCredentials);
   instance['credentials'] = createObject("java", "com.amazonaws.auth.PropertiesCredentials").init(instance.awsCredentials);
@@ -39,10 +35,6 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   return this;
  }
  
- /*
- *  Author: Robert Zehnder, Date: 04/01/2011, Purpose: Overrides the default endpoint for this client ("https://email.us-east-1.amazonaws.com").
- *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Return a struct with the api status instead of void
- */
  public struct function setEndPoint(required String endPoint) hint = "Overrides the default endpoint" {
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   try{
@@ -54,10 +46,6 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   return result;
  }
   
- /*
- *  Author: Robert Zehnder, Date: 04/01/2011, Purpose: Returns the user's current activity limits.
- *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Return a struct with the api status instead of void
- */
  public struct function getSendQuota() hint = "Returns your quota from from the SES service" {
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   result['max24HourSend'] = "";
@@ -75,10 +63,6 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   return result;
  }
 
- /*
- *  Author: Robert Zehnder, Date: 04/02/2011, Purpose: Returns the user's sending statistics. The result is a list of data points, representing the last two weeks of sending activity.
- *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Return a struct with the api status 
- */
  public struct function getSendStatistics() hint = "Returns the user's sending statistics. The result is a list of data points, representing the last two weeks of sending activity." {
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   var dataPoints = instance.emailService.GetSendStatistics().getSendDataPoints();
@@ -102,10 +86,6 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   return result;
  }
  
- /*
- *  Author: Robert Zehnder, Date: 04/01/2011, Purpose: Deletes the specified email address from the list of verified addresses.
- *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Chained email address to the request constructor, updated return with apiStatus
- */
  public struct function deleteVerifiedEmailAddress(required String email) hint = "Deletes the specified email address from the list of verified addresses." {
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   var awsRequest = createObject("java", "com.amazonaws.services.simpleemail.model.DeleteVerifiedEmailAddressRequest").withEmailAddress(arguments.email);
@@ -118,11 +98,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   return result;
  }
  
- /*
- *  Author: Robert Zehnder, Date: 03/31/2011, Purpose: Returns a list containing all of the email addresses that have been verified. <ArrayList>
- *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Return a struct with the api status
- */
- public struct function listVerifiedEmailAddresses() hint = "Returns a list containing all of the email addresses that have been verified." {
+public struct function listVerifiedEmailAddresses() hint = "Returns a list containing all of the email addresses that have been verified." {
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   try{
    result['verifiedList'] = instance.emailService.ListVerifiedEmailAddresses().getVerifiedEmailAddresses();
@@ -133,11 +109,6 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   return result;
  }
 
- /*
- *  Author: Robert Zehnder, Date: 03/31/2011, Purpose: Verifies an email address.
- *  Modified: Robert Zehnder, Date: 04/01/2011, Purpose: Wrapped in try/catch block to catch any errors
- *  Modified: Robert Zehnder, Date: 04/02/2011, Purpose: Return a struct with the api status
- */
  public struct function verifyEmailAddress(required String email) hint = "Verifies an email address." {
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   var verifyRequest = createObject("java", "com.amazonaws.services.simpleemail.model.VerifyEmailAddressRequest").withEmailAddress(arguments.email);
@@ -150,11 +121,6 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   return result;
  }
 
- /*
- *  Author: Robert Zehnder, Date: 03/31/2011, Purpose: Composes an email message based on input data, and then immediately queues the message for sending.
- *  Modified: Robert Zehnder, Date: 04/01/2011, Purpose: Corrected name to match javadoc. Allow sending recipients, cc, and bcc fields as a csv list
- *  Modified: Robert Zehnder, Date: 04/03/2011, Purpose: Set Reply-To header, if specified
- */
  public struct function sendEMail(required String from, required String recipient, required String subject, required String messageBody, String cc = "", String bcc = "", String replyTo = "") hint = "Composes an email message based on input data, and then immediately queues the message for sending." {
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   var mailSession = createObject("java", "javax.mail.Session").getInstance(instance.props);
