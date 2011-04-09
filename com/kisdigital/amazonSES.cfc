@@ -5,6 +5,8 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  * 
  *  AmazonSES Reference: http://docs.amazonwebservices.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/simpleemail/AmazonSimpleEmailService.html
  *  
+ *  Version 0.1.4
+ *     Added sendSingle flag to send messages to send outgoing mail to one recipient at a time and not all one on to: field
  *  Version 0.1.3
  *     Set Reply-To in the message header if specified
  *  Version 0.1.2
@@ -21,7 +23,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  *     Added function listVerifiedEmailAddresses
  *     Added function verifyEmailAddress
  *     Added function sendEmail
- */
+ **/
  var instance = {};
 
  public any function init(required String pathToCredentials) hint = "I initialize the gateway" {
@@ -121,11 +123,11 @@ public struct function listVerifiedEmailAddresses() hint = "Returns a list conta
   return result;
  }
 
- public struct function sendEMail(required String from, required String recipient, required String subject, required String messageBody, String cc = "", String bcc = "", String replyTo = "") hint = "Composes an email message based on input data, and then immediately queues the message for sending." {
+ public struct function sendEMail(required String from, required String recipient, required String subject, required String messageBody, String cc = "", String bcc = "", String replyTo = "", Boolean sendSingle = true) hint = "Composes an email message based on input data, and then immediately queues the message for sending." {
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   var mailSession = createObject("java", "javax.mail.Session").getInstance(instance.props);
   var mailTransport = createObject("java", "com.amazonaws.services.simpleemail.AWSJavaMailTransport").init(mailSession, JavaCast("null", 0));
-  var messageObj = createObject("java", "javax.mail.internet.MimeMessage").init(mailSession);
+  var messageObj = "";
   var messageRecipientType = createObject("java", "javax.mail.Message$RecipientType");
   var messageFrom = createObject("java", "javax.mail.internet.InternetAddress").init(arguments.from);
   var messageTo = listToArray(arguments.recipient);
@@ -136,37 +138,49 @@ public struct function listVerifiedEmailAddresses() hint = "Returns a list conta
   var messageBody = arguments.messageBody;
   var verified = arrayToList(listVerifiedEmailAddresses().verifiedList).contains(arguments.from);
   var i = 0;
+  var j = 0;
+  var loopCnt = 1;
   
   try {
    if(!verified){
     verifyEmailAddress(arguments.from);
     throw("Email address has not been validated.  Please check the email on account " & arguments.from & " to complete validation.");
    }
-   if(len(trim(arguments.replyTo))){
-    messageObj.addHeader("Reply-To", createObject("java", "javax.mail.internet.InternetAddress").init(messageReplyTo).toString());
-   }   
-   mailTransport.connect();
-
-   messageObj.setFrom(messageFrom);
-   for(i = 1; i <= arrayLen(messageTo); i++){
-    messageObj.addRecipient(messageRecipientType.TO, createObject("java", "javax.mail.internet.InternetAddress").init(trim(messageTo[i])));
-   }
-   if(arrayLen(messageCC)){
-    for(i = 1; i <= arrayLen(messageCC); i++){
-     messageObj.addRecipient(messageRecipientType.CC, createObject("java", "javax.mail.internet.InternetAddress").init(trim(messageCC[i])));
-    }
-   }
-   if(arrayLen(messageBCC)){
-    for(i = 1; i <= arrayLen(messageBCC); i++){
-     messageObj.addRecipient(messageRecipientType.BCC, createObject("java", "javax.mail.internet.InternetAddress").init(trim(messageBCC[i])));
-    }
-   }
-   messageObj.setSubject(messageSubject);
-   messageObj.setContent(messageBody, "text/html");
-   messageObj.saveChanges();
    
-   mailTransport.sendMessage(messageObj, JavaCast("null", 0));
-
+   mailTransport.connect();
+   if(arguments.sendSingle) loopCnt = arrayLen(messageTo);
+    
+   for(j = 1; j <= loopCnt; j++){
+    messageObj = createObject("java", "javax.mail.internet.MimeMessage").init(mailSession);  
+    if(len(trim(arguments.replyTo))){
+     messageObj.addHeader("Reply-To", createObject("java", "javax.mail.internet.InternetAddress").init(messageReplyTo).toString());
+    }   
+   
+    messageObj.setFrom(messageFrom);
+    if(!arguments.sendSingle){ 
+     for(i = 1; i <= arrayLen(messageTo); i++){
+      messageObj.addRecipient(messageRecipientType.TO, createObject("java", "javax.mail.internet.InternetAddress").init(trim(messageTo[i])));
+     }
+    }
+    else{
+     messageObj.addRecipient(messageRecipientType.TO, createObject("java", "javax.mail.internet.InternetAddress").init(trim(messageTo[j]))); 
+    }
+    if(arrayLen(messageCC)){
+     for(i = 1; i <= arrayLen(messageCC); i++){
+      messageObj.addRecipient(messageRecipientType.CC, createObject("java", "javax.mail.internet.InternetAddress").init(trim(messageCC[i])));
+     }
+    }
+    if(arrayLen(messageBCC)){
+     for(i = 1; i <= arrayLen(messageBCC); i++){
+      messageObj.addRecipient(messageRecipientType.BCC, createObject("java", "javax.mail.internet.InternetAddress").init(trim(messageBCC[i])));
+     }
+    }
+    messageObj.setSubject(messageSubject);
+    messageObj.setContent(messageBody, "text/html");
+    messageObj.saveChanges();
+   
+    mailTransport.sendMessage(messageObj, JavaCast("null", 0));
+   }
    mailTransport.close();
   }
   catch (Any e){
