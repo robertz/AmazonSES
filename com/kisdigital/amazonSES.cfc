@@ -6,7 +6,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  *  AmazonSES Reference: http://docs.amazonwebservices.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/simpleemail/AmazonSimpleEmailService.html
  *  
  *  Version 0.1.4
- *     Added sendSingle flag to send messages to send outgoing mail to one recipient at a time and not all one on to: field
+ *     Added sendSingle flag to sendEMail for sending recipients individually
  *  Version 0.1.3
  *     Set Reply-To in the message header if specified
  *  Version 0.1.2
