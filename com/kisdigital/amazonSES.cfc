@@ -7,6 +7,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  *  
  *  Version 0.1.4
  *     Added sendSingle flag to sendEMail for sending recipients individually
+ *     Modified sendEMail to fix hard errors when arguments are present but have no length
  *  Version 0.1.3
  *     Set Reply-To in the message header if specified
  *  Version 0.1.2
@@ -123,25 +124,27 @@ public struct function listVerifiedEmailAddresses() hint = "Returns a list conta
   return result;
  }
 
- public struct function sendEMail(required String from, required String recipient, required String subject, required String messageBody, String cc = "", String bcc = "", String replyTo = "", Boolean sendSingle = true) hint = "Composes an email message based on input data, and then immediately queues the message for sending." {
+ public struct function sendEMail(required String from, required String recipient, required String subject, required String messageBody, String cc = "", String bcc = "", String replyTo = "", Boolean sendSingle = false) hint = "Composes an email message based on input data, and then immediately queues the message for sending." {
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   var mailSession = createObject("java", "javax.mail.Session").getInstance(instance.props);
   var mailTransport = createObject("java", "com.amazonaws.services.simpleemail.AWSJavaMailTransport").init(mailSession, JavaCast("null", 0));
   var messageObj = "";
+  var messageFrom = "";
+  var verified = "";  
   var messageRecipientType = createObject("java", "javax.mail.Message$RecipientType");
-  var messageFrom = createObject("java", "javax.mail.internet.InternetAddress").init(arguments.from);
   var messageTo = listToArray(arguments.recipient);
   var messageCC = listToArray(arguments.cc);
   var messageBCC = listToArray(arguments.bcc);
   var messageReplyTo = arguments.replyTo;
   var messageSubject = arguments.subject;
   var messageBody = arguments.messageBody;
-  var verified = arrayToList(listVerifiedEmailAddresses().verifiedList).contains(arguments.from);
   var i = 0;
   var j = 0;
   var loopCnt = 1;
   
   try {
+   messageFrom = createObject("java", "javax.mail.internet.InternetAddress").init(arguments.from);
+   verified = arrayToList(listVerifiedEmailAddresses().verifiedList).contains(arguments.from);
    if(!verified){
     verifyEmailAddress(arguments.from);
     throw("Email address has not been validated.  Please check the email on account " & arguments.from & " to complete validation.");
