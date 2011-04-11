@@ -57,7 +57,9 @@
 
 <body>
  <cfscript>
-  sesGateway = new com.kisdigital.amazonSES(expandPath('/') & "AwsCredentials.properties");
+  try{
+   sesGateway = application.sesGateway;
+
   if(structKeyExists(form, 'cmd')){
    if(!structKeyExists(form, "from")) form['from'] = "";
    if(form.cmd eq 1){
@@ -85,14 +87,17 @@
     form['addEmail'] = "";
   }
   //sesGateway.setEndPoint("https://email.us-east-1.amazonaws.com");
- 
-  //writeDump(var = sesGateway, label="sesGateway object");
-  //writeDump(var = sesGateway.listVerifiedEmailAddresses(), label="Verified Senders");
-  //writeDump(var = sesGateway.getSendQuota(), label = "Send Quota");
-  //writeDump(var = sesGateway.getSendStatistics(), label = "Send Statistics");  
+
+  sendStats = sesGateway.getSendStatistics();  
   verifiedSenders = sesGateway.listVerifiedEmailAddresses();
   vList = verifiedSenders.verifiedList;
   sendQuota = sesGateway.getSendQuota();
+   }
+  catch(any e){
+    writeOutput('<h2><strong>If you see this message you probably need to edit your AwsCredentials.properties file!</strong></h2>');
+    writeDump(e.message);
+    abort;
+  }
  </cfscript>
  
 <cfoutput>
@@ -194,6 +199,7 @@
   </div>
   <br /><br />
  </div>
+ <cfdump var="#sesGateway.getSupportedHeaders()#"/>
 </cfoutput>
  <script type="text/javascript">
   $(document).ready(function(){
