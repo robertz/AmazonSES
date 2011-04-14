@@ -122,6 +122,7 @@
    <input type="button" class="navButton" onclick="document.location='#CGI.SCRIPT_NAME#';" value="Reset">
    <input type="button" class="navButton" onclick="showDiv('formMessageContainer');" value="Emailer">
    <input type="button" class="navButton" onclick="showDiv('formManageEmails');" value="Manage Senders">
+   <input type="button" class="navButton" onclick="showDiv('formSendStats');" value="Send Stats">
   </div>
   <div id="mainForm">
    <form id="message" method="post">
@@ -194,12 +195,31 @@
      </table>    
     </div>
     
+	<div id="formSendStats" class="hidden">
+     <table cellpadding="0" cellspacing="0" style="width: 100%;">
+      <tr>
+       <td style="width: 300px;"><strong>Time</strong></td>
+       <td align="center"><strong>Attempts</strong></td>
+       <td align="center"><strong>Bounces</strong></td>
+       <td align="center"><strong>Rejects</strong></td>
+       <td align="center"><strong>Complaints</strong></td>
+      </tr>
+      <cfloop from="1" to="#arrayLen(sendStats.dataPoints)#" index="n">
+       <tr>
+        <td>#sendStats.dataPoints[n].timeStamp#</td>
+		<td align="center">#sendStats.dataPoints[n].deliveryAttempts#</td>
+		<td align="center">#sendStats.dataPoints[n].bounces#</td>
+		<td align="center">#sendStats.dataPoints[n].rejects#</td>
+		<td align="center">#sendStats.dataPoints[n].complaints#</td>
+       </tr>
+      </cfloop>
+     </table>	
+	</div>
     
    </form>
   </div>
   <br /><br />
  </div>
- <cfdump var="#sesGateway.getSupportedHeaders()#"/>
 </cfoutput>
  <script type="text/javascript">
   $(document).ready(function(){

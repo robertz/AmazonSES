@@ -8,6 +8,10 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  *  Version 0.1.5
  *     Moving to application scoped component for persistance of settings
  *     Each method now initiates a new email service connection when called
+ *     The setEndPoint method is now set when the email service is initiated
+ *     The sendQuota, sendStatistics and verifiedEmailAddresses are now stored in the instance
+ *     Mail headers are now fully supported (as allowed by the Amazon SES service)
+ *     Better error handling for demo page when AWS credentials are not valid (prevents hard error)
  *  Version 0.1.4
  *     Added sendSingle flag to sendEMail for sending recipients individually
  *     Modified sendEMail to fix hard errors when arguments are present but have no length
@@ -37,15 +41,31 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   instance.props.setProperty("mail.transport.protocol", "aws");
   instance.props.setProperty("mail.aws.user", instance.credentials.getAWSAccessKeyId());
   instance.props.setProperty("mail.aws.password", instance.credentials.getAWSSecretKey());
+  instance['lastUpdated'] = now();
+  instance['statsRefreshTimeout'] = 5;
   instance['supportedHeaders'] = listToArray("Accept-Language,Bcc,Cc,Comments,Comment-Type,Content-Transfer-Encoding,Content-ID,Content-Description,Content-Disposition,Content-Language,Date,DKIM-Signature,DomainKey-Signature,From,In-Reply-To,Keywords,List-Archive,List-Help,List-Id,List-Owner,List-Post,List-Subscribe,List-Unsubscribe,Message-Id,MIME-Version,Received,References,Reply-To,Return-Path,Sender,Subject,Thread-Index,Thread-Topic,To,User-Agent");
   instance['endPoint'] = "";
+  instance['sendQuota'] = getSendQuotaService();
+  instance['sendStats'] = getSendStatisticsService();
+  instance['verifiedEmailAddresses'] = listVerifiedEmailAddressesService();
+  instance['sendHeaders'] = {'User-Agent':'CFamazonSES'};
   return this;
  }
  
- private boolean function initRequest() {
+ private boolean function initRequest() hint = "Initialize emailService connection" {
   instance['emailService'] = createObject("java", "com.amazonaws.services.simpleemail.AmazonSimpleEmailServiceClient").init(instance.credentials);
-  if(len(instance.endPoint)) setEndPoint(instance.endPoint);
+  if(len(instance.endPoint)) instance.emailService.setEndPoint(instance.endPoint);
   return true; 
+ }
+ 
+ public boolean function refreshStats() hint = "I update the stats for the instance" {
+  lock name="lockForUpdatingStatistics" type="exclusive" timeout="10" {
+   instance['lastUpdated'] = now();
+   instance['sendQuota'] = getSendQuotaService();
+   instance['sendStats'] = getSendStatisticsService();
+   instance['verifiedEmailAddresses'] = listVerifiedEmailAddressesService();
+  }
+  return true;
  }
  
  public struct function deleteVerifiedEmailAddress(required String email) hint = "Deletes the specified email address from the list of verified addresses." {
@@ -60,8 +80,19 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   }
   return result;
  }
+ 
+ public struct function getHeaders() hint = "I get a list of the currently defined headers" {
+  return duplicate(instance.sendHeaders);
+ }
+ 
+ public struct function getSendQuota() hint = "I return the send quota for the instance" {
+  var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
+  if(abs(dateDiff("n", instance.lastUpdated, now())) > instance.statsRefreshTimeout) refreshStats();
+  structAppend(result, instance.sendQuota);
+  return result;
+ }
   
- public struct function getSendQuota() hint = "Returns your quota from from the SES service" {
+ private struct function getSendQuotaService() hint = "Returns your quota from from the SES service" {
   var setRequest = initRequest();
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   result['max24HourSend'] = "";
@@ -78,8 +109,15 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   }
   return result;
  }
-
- public struct function getSendStatistics() hint = "Returns the user's sending statistics. The result is a list of data points, representing the last two weeks of sending activity." {
+ 
+ public struct function getSendStatistics() hint = "I return the send stats for the instance" {
+  var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
+  if(abs(dateDiff("m", instance.lastUpdated, now())) > instance.statsRefreshTimeout) refreshStats();
+  structAppend(result, instance.sendStats);
+  return result;
+ }
+ 
+ private struct function getSendStatisticsService() hint = "Returns the user's sending statistics. The result is a list of data points, representing the last two weeks of sending activity." {
   var setRequest = initRequest();
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   var dataPoints = instance.emailService.GetSendStatistics().getSendDataPoints();
@@ -103,11 +141,20 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
   return result;
  }
  
- public array function getSupportedHeaders() {
-  return duplicate(instance.supportedHeaders);
+ public struct function getSupportedHeaders() hint = "Returns a list of currently supported headers" {
+  var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
+  result['supportedHeaders'] = duplicate(instance.supportedHeaders);
+  return result;
  }
  
- public struct function listVerifiedEmailAddresses() hint = "Returns a list containing all of the email addresses that have been verified." {
+ public struct function listVerifiedEmailAddresses() hint = "Returns verified email addresses for the instance" {
+  var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
+  if(abs(dateDiff("m", instance.lastUpdated, now())) > instance.statsRefreshTimeout) refreshStats();
+  structAppend(result, instance.verifiedEmailAddresses);
+  return result;
+ }
+ 
+ private struct function listVerifiedEmailAddressesService() hint = "Returns a list containing all of the email addresses that have been verified." {
   var setRequest = initRequest();
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
   try{
@@ -151,7 +198,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
     
    for(j = 1; j <= loopCnt; j++){
     messageObj = createObject("java", "javax.mail.internet.MimeMessage").init(mailSession);
-    messageObj.addHeader("User-Agent", "CFamazonSES");  
+    
     if(len(trim(arguments.replyTo))){
      messageObj.addHeader("Reply-To", createObject("java", "javax.mail.internet.InternetAddress").init(messageReplyTo).toString());
     }   
@@ -175,6 +222,12 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
       messageObj.addRecipient(messageRecipientType.BCC, createObject("java", "javax.mail.internet.InternetAddress").init(trim(messageBCC[i])));
      }
     }
+    // Append send headers to the message
+    if(len(structKeyList(instance.sendHeaders))){
+     for(i in instance.sendHeaders){
+      messageObj.addHeader(i, instance.sendHeaders[i]);
+     }   
+    }
     messageObj.setSubject(messageSubject);
     messageObj.setContent(messageBody, "text/html");
     messageObj.saveChanges();
@@ -190,9 +243,18 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
  }
  
  public struct function setEndPoint(required String endPoint) hint = "Overrides the default endpoint" {
-  var setRequest = initRequest();
   var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
-  instance.endPoint = arguments.endPoint;
+  lock name="lockForSettingEndPoint" type="exclusive" timeout="10" {
+   instance['endPoint'] = arguments.endPoint;
+  }
+  return result;
+ }
+ 
+ public struct function setHeaders(required struct headers) hint = "I set the headers for outgoing messages" {
+  var result = {'apiStatus':'0','apiMessage':'SUCCESS'};
+  lock name="lockForWritingSendHeaders" type="exclusive" timeout="10" {
+   instance['sendHeaders'] = arguments.headers;
+  }
   return result;
  }
  
