@@ -47,9 +47,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
 		instance['sendQuota'] = getSendQuotaService();
 		instance['sendStats'] = getSendStatisticsService();
 		instance['verifiedEmailAddresses'] = listVerifiedEmailAddressesService();
-		instance['sendHeaders'] = {
-			'User-Agent':'CFamazonSES'
-		};
+		instance['sendHeaders'] = {'User-Agent':'CFamazonSES'};
 		return this;
 	}
 	
@@ -77,9 +75,7 @@ component output = "false" hint = "I am a gateway to the Amazon Simple Email Ser
 			instance.emailService.deleteVerifiedEmailAddress(awsRequest);
 		}
 		catch(any e) {
-			result = {
-				'apiStatus':'-1','apiMessage':'Method deleteVerifiedEmailAddress: '& e.message
-			};
+			result = {'apiStatus':'-1','apiMessage':'Method deleteVerifiedEmailAddress: '& e.message};
 		}
 		return result;
 	}
